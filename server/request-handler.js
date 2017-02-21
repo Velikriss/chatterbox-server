@@ -11,6 +11,10 @@ this file and include it in basic-server.js so that it actually works.
 *Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
 
 **************************************************************/
+var fs = require('fs');
+
+
+
 var messages = [];
 var defaultCorsHeaders = {
   'access-control-allow-origin': '*',
@@ -20,6 +24,19 @@ var defaultCorsHeaders = {
 };
 
 var requestHandler = function(request, response) {
+
+  fs.readFile('../client/scripts/app.js', function(err, fd) {
+    if (err) {
+      response.writeHead(500); response.end('Server Error!');
+      return;
+    }
+  
+    var headers = {'Content-type': 'text/javascript'}; 
+    response.writeHead(headers);
+    // console.log(fd);
+    // response.end(fd);
+    response.pipe(request);
+  });
     // Request and Response come from node's http module.
     //
     // They include information about both the incoming request, such as
@@ -44,55 +61,77 @@ var requestHandler = function(request, response) {
 
   var body = [];
   
-  request
-  .on('data', function(chunk) {
-    console.log(chunk);
-    body.push(chunk);
-  });
-  request.on('end', function() {
-    if (url !== '/classes/messages' && url !== '/classes/room') {
-      response.statusCode = 404;
-    } else if (method === 'POST') {
-      //body = Buffer.concat(body).toString();
-      messages.push(JSON.parse(body));
-      response.statusCode = 201;
-    } else {
-      response.statusCode = 200;
-      // at this point, `body` has the entire request body stored in it as a string
-    }
+  if (request.method === 'OPTIONS') {
+    console.log('!OPTIONS');
+    var headers = {};
+    // IE8 does not allow domains to be specified, just the *
+    // headers["Access-Control-Allow-Origin"] = req.headers.origin;
+    headers["Access-Control-Allow-Origin"] = "*";
+    headers["Access-Control-Allow-Methods"] = "POST, GET, PUT, DELETE, OPTIONS";
+    headers["Access-Control-Allow-Credentials"] = false;
+    headers["Access-Control-Max-Age"] = '86400'; // 24 hours
+    headers["Access-Control-Allow-Headers"] = "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept";
+    response.writeHead(200, headers);
+    response.end();
+  } else {
 
-     // See the note below about CORS headers.
-    var headers = defaultCorsHeaders;
+    request.on('data', function(chunk) {
+      console.log(chunk);
+      body.push(chunk);
+    });
+    request.on('end', function() {
+      if (url !== '/classes/messages' && url !== '/classes/room') {
+        response.statusCode = 404;
+      } else if (method === 'POST') {
+        //body = Buffer.concat(body).toString();
+        var message = JSON.parse(body);
+        message.createdAt = new Date();
+        message.updatedAt = new Date();
+        if (message.roomname === undefined) {
+          message.roomname = 'lobby';
+        }
+        message.objectId = messages.length; 
 
-      // Tell the client we are sending them plain text.
-      //
-      // You will need to change this if you are sending something
-      // other than plain text, like JSON or HTML.
+        messages.push(message);
+        response.statusCode = 201;
+      } else {
+        response.statusCode = 200;
+        // at this point, `body` has the entire request body stored in it as a string
+      }
 
-    headers['Content-Type'] = 'application/json';
+       // See the note below about CORS headers.
+      var headers = defaultCorsHeaders;
 
-      // .writeHead() writes to the request line and headers of the response,
-      // which includes the status and all headers.
+        // Tell the client we are sending them plain text.
+        //
+        // You will need to change this if you are sending something
+        // other than plain text, like JSON or HTML.
 
-    response.writeHead(response.statusCode, headers);
+      headers['Content-Type'] = 'application/json';
 
-    var responseBody = {
-      headers: headers,
-      method: method,
-      url: url,
-      body: body,
-      results: messages
-    };
+        // .writeHead() writes to the request line and headers of the response,
+        // which includes the status and all headers.
 
-      // Make sure to always call response.end() - Node may not send
-      // anything back to the client until you do. The string you pass to
-      // response.end() will be the body of the response - i.e. what shows
-      // up in the browser.
-      
-      // Calling .end "flushes" the response's internal buffer, forcing
-      // node to actually send all the data over to the client.
-    response.end(JSON.stringify(responseBody));
-  });
+      response.writeHead(response.statusCode, headers);
+
+      var responseBody = {
+        headers: headers,
+        method: method,
+        url: url,
+        body: body,
+        results: messages,
+      };
+
+        // Make sure to always call response.end() - Node may not send
+        // anything back to the client until you do. The string you pass to
+        // response.end() will be the body of the response - i.e. what shows
+        // up in the browser.
+        
+        // Calling .end "flushes" the response's internal buffer, forcing
+        // node to actually send all the data over to the client.
+      response.end(JSON.stringify(responseBody));
+    });
+  }
 
   request.on('error', function(err) {
   // This prints the error message and stack trace to `stderr`.

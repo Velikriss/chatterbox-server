@@ -10,11 +10,11 @@ this file and include it in basic-server.js so that it actually works.
 
 *Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
 
-**************************************************************/
+***t***********************************************************/
+// var fs = require('fs');
+
+
 var fs = require('fs');
-
-
-
 var messages = [];
 var defaultCorsHeaders = {
   'access-control-allow-origin': '*',
@@ -24,19 +24,17 @@ var defaultCorsHeaders = {
 };
 
 var requestHandler = function(request, response) {
+  /*var rs = fs.createReadStream('../client/scripts/app.js');
+  var appData = '';
+  rs.setEncoding('utf8');
 
-  fs.readFile('../client/scripts/app.js', function(err, fd) {
-    if (err) {
-      response.writeHead(500); response.end('Server Error!');
-      return;
-    }
-  
-    var headers = {'Content-type': 'text/javascript'}; 
-    response.writeHead(headers);
-    // console.log(fd);
-    // response.end(fd);
-    response.pipe(request);
+  rs.on('data', function(chunk) {
+    appData += chunk;
   });
+
+  rs.on('end', function() {
+    console.log(appData);
+  });*/
     // Request and Response come from node's http module.
     //
     // They include information about both the incoming request, such as
@@ -60,7 +58,7 @@ var requestHandler = function(request, response) {
   var nodeHeaders = request.headers;
 
   var body = [];
-  
+  console.log('new url: ', url)
   if (request.method === 'OPTIONS') {
     console.log('!OPTIONS');
     var headers = {};
@@ -85,6 +83,11 @@ var requestHandler = function(request, response) {
       } else if (method === 'POST') {
         //body = Buffer.concat(body).toString();
         var message = JSON.parse(body);
+        if (message.message.length > 140) {
+          response.writeHead(400, defaultCorsHeaders);
+          response.end();
+          return;
+        }
         message.createdAt = new Date();
         message.updatedAt = new Date();
         if (message.roomname === undefined) {

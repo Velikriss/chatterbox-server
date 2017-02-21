@@ -73,5 +73,29 @@ describe('server', function() {
     });
   });
 
+  it('should recieve messages from the localhost server', function(done) {
+    request('http://localhost:3000/classes/messages', function(error, response, body) {
+      expect(response.statusCode).to.equal(200);
+      done();
+    });
+  });
 
+  it('should reject POST requests that are too long', function(done) {
+    var message = '';
+    for (var i = 0; i < 150; i++) {
+      message += 'g';
+    }
+
+    var requestParams = {method: 'POST',
+      uri: 'http://127.0.0.1:3000/classes/messages',
+      json: {
+        username: 'Jono',
+        message: 'Do my biddinggggggggggggggggggggggggggggggggggggggggg!' + message}
+    };
+
+    request(requestParams, function(error, response, body) {
+      expect(response.statusCode).to.equal(400);
+      done();
+    });
+  });
 });

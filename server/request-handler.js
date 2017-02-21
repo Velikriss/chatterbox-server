@@ -12,6 +12,13 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 var messages = [];
+var defaultCorsHeaders = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'access-control-allow-headers': 'content-type, accept, ',
+  'access-control-max-age': 10 // Seconds.
+};
+
 var requestHandler = function(request, response) {
     // Request and Response come from node's http module.
     //
@@ -39,19 +46,18 @@ var requestHandler = function(request, response) {
   
   request
   .on('data', function(chunk) {
-    console.log('on data');
+    console.log(chunk);
     body.push(chunk);
-    console.log('-------->', method);
-  })
-  .on('end', function() {
-    if (method === 'POST') {
-      console.log('on end: post');
-      body = Buffer.concat(body).toString();
+  });
+  request.on('end', function() {
+    if (url !== '/classes/messages' && url !== '/classes/room') {
+      response.statusCode = 404;
+    } else if (method === 'POST') {
+      //body = Buffer.concat(body).toString();
+      messages.push(JSON.parse(body));
       response.statusCode = 201;
     } else {
-      console.log('on end: get');
       response.statusCode = 200;
-      response.results = [];
       // at this point, `body` has the entire request body stored in it as a string
     }
 
@@ -85,7 +91,6 @@ var requestHandler = function(request, response) {
       
       // Calling .end "flushes" the response's internal buffer, forcing
       // node to actually send all the data over to the client.
-    console.log('on end');
     response.end(JSON.stringify(responseBody));
   });
 
@@ -96,10 +101,10 @@ var requestHandler = function(request, response) {
   });
 
 
-  response.on('error', function(err) {
+  /*response.on('error', function(err) {
     console.log(err.stack);
   });
-
+*/
 };
 
   // These headers will allow Cross-Origin Resource Sharing (CORS).
@@ -112,11 +117,6 @@ var requestHandler = function(request, response) {
   // Another way to get around this restriction is to serve you chat
   // client from this domain by setting up static file serving.
 
-var defaultCorsHeaders = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'access-control-allow-headers': 'content-type, accept',
-  'access-control-max-age': 10 // Seconds.
-};
 
-exports.handleRequest = requestHandler;
+
+exports.requestHandler = requestHandler;
